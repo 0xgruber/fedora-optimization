@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  shellcheck:
+    name: ShellCheck Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          scandir: '.'
+          format: gcc
+
+  test-on-fedora:
+    name: Test on Fedora
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        fedora-version: ['39', '40', 'latest']
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Test on Fedora ${{ matrix.fedora-version }}
+        run: |
+          docker run --rm -v "$PWD:/workspace" -w /workspace fedora:${{ matrix.fedora-version }} bash -c '
+            echo "Testing on Fedora ${{ matrix.fedora-version }}..."
+            
+            # Validate syntax of all shell scripts
+            find /workspace -name "*.sh" -type f | while read script; do
+              echo "Validating: $script"
+              bash -n "$script" || exit 1
+            done
+            
+            echo "✅ All scripts validated on Fedora ${{ matrix.fedora-version }}"
+          '
+
+  syntax-check:
+    name: Syntax Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate shell script syntax
+        run: |
+          echo "Checking all shell scripts..."
+          find . -name "*.sh" -type f | while read script; do
+            echo "Checking: $script"
+            bash -n "$script" || exit 1
+          done
+          echo "✅ All scripts have valid syntax"
